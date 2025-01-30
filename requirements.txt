@@ -1,0 +1,6 @@
+# requirements.txt
+
+Flask==3.0.2
+gunicorn==21.2.0
+# google cloud client library
+google-cloud-storage==2.9.0
