@@ -10,62 +10,81 @@ from gemini_service import analyze_image
 
 app = Flask(__name__)
 
-#bucket name
+# Bucket name
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "my-flask-gcs-app-uploads")
 
 @app.route("/", methods=["GET"])
 def index():
     """
-    Displays an HTML form for uploading images
-    and displays thumbnails of previously uploaded images.
+    Displays an HTML form for uploading images and shows thumbnails.
+    The background color is dynamically set from an environment variable.
     """
-    html_form = """
+    # Read the background color from an environment variable; default to blue if not set
+    bg_color = os.environ.get("BACKGROUND_COLOR", "blue")
+    html_form = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>AI Image Captioner</title>
         <style>
-            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-            h1 { color: #333; }
-            .upload-form { margin-bottom: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 5px; }
-            .button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; 
-                     border-radius: 4px; cursor: pointer; }
-            .button:hover { background-color: #45a049; }
-            
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                line-height: 1.6;
+                background-color: {bg_color};
+            }}
+            h1 {{ color: #333; }}
+            .upload-form {{
+                margin-bottom: 30px;
+                padding: 20px;
+                background-color: #f9f9f9;
+                border-radius: 5px;
+            }}
+            .button {{
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px 15px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }}
+            .button:hover {{
+                background-color: #45a049;
+            }}
             /* Gallery styles */
-            .image-gallery { 
+            .image-gallery {{ 
                 display: grid; 
                 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                 gap: 20px; 
                 margin-top: 20px;
-            }
-            .image-card {
+            }}
+            .image-card {{
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 overflow: hidden;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 transition: transform 0.3s ease;
-            }
-            .image-card:hover {
+            }}
+            .image-card:hover {{
                 transform: translateY(-5px);
                 box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            }
-            .image-thumbnail {
+            }}
+            .image-thumbnail {{
                 width: 100%;
                 height: 150px;
                 object-fit: cover;
-            }
-            .image-name {
+            }}
+            .image-name {{
                 padding: 10px;
                 text-align: center;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-            }
-            .image-card a {
+            }}
+            .image-card a {{
                 text-decoration: none;
                 color: #333;
-            }
+            }}
         </style>
     </head>
     <body>
@@ -85,18 +104,13 @@ def index():
         <h2>Uploaded Images</h2>
         <div class="image-gallery">
     """
-    
     # Get list of files in the GCS bucket
     files = get_list_of_files(BUCKET_NAME)
-    
-    # Filter only JPEG or JPG
-    image_files = [f for f in files if f.lower().endswith(".jpeg") or f.lower().endswith(".jpg")]
+    image_files = [f for f in files if f.lower().endswith((".jpeg", ".jpg"))]
     
     for image in image_files:
-        # Create the view link - this will show both image and caption
         view_link = f"/view/{image}"
         thumbnail_link = f"/files/{image}"
-        
         html_form += f"""
             <div class="image-card">
                 <a href="{view_link}">
@@ -204,6 +218,9 @@ def view_image_with_caption(filename):
     # Create a binary data URL to embed the image directly
     image_url = f"/files/{filename}"
     
+    # Get background color for consistency with main page
+    bg_color = os.environ.get("BACKGROUND_COLOR", "blue")
+    
     # Generate the HTML response with the image and caption
     html = f"""
     <!DOCTYPE html>
@@ -211,7 +228,7 @@ def view_image_with_caption(filename):
     <head>
         <title>{title}</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }}
+            body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: {bg_color}; }}
             .container {{ max-width: 800px; margin: 0 auto; padding: 20px; background-color: white; 
                          box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
             h1 {{ color: #333; margin-top: 0; padding-bottom: 15px; border-bottom: 1px solid #eee; }}
@@ -268,6 +285,14 @@ def health():
     """
     return "OK", 200
 
+@app.route("/version")
+def version():
+    """
+    Returns the background color being used.
+    """
+    bg_color = os.environ.get("BACKGROUND_COLOR", "blue")
+    return f"Using {bg_color} background", 200
+
 if __name__ == "__main__":
-    # Only for local testing; Cloud Run will provide a production WSGI server.
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=True)
